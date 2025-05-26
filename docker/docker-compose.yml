@@ -1,0 +1,3 @@
+networks:
+  fluxin-network:
+    driver: bridge
