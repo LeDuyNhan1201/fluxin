@@ -36,6 +36,7 @@ processors:
         value: service.name, service.namespace
 
 exporters:
+  logging:
   debug:
     verbosity: detailed
 
@@ -66,12 +67,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, servicegraph, otlp/tempo]
+      exporters: [logging, debug, servicegraph, otlp/tempo]
 
     metrics:
       receivers: [otlp, servicegraph]
       processors: [transform, batch]
-      exporters: [debug, prometheus, prometheusremotewrite]
+      exporters: [logging, debug, prometheus, prometheusremotewrite]
 
     logs:
       receivers: [otlp]

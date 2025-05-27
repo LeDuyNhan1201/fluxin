@@ -7,9 +7,9 @@ else
   env_file=${DIR}/helper/idp_config.sh
 fi
 echo "Processing $env_file"
-source $env_file
-source ${DIR}/helper/cp_config.sh
-source ${DIR}/helper/functions.sh
+source "$env_file"
+# source ${DIR}/helper/cp_config.sh
+source "${DIR}"/helper/functions.sh
 
 #-------------------------------------------------------------------------------
 # Update cli permission to be executable
@@ -20,6 +20,7 @@ create_client_files
 
 create_env_file
 
-docker-compose -f ../docker-compose.dev.yml \
+docker-compose -f ../docker-compose.yml \
+-f ../identity-server.yml \
 -f ../kafka-cluster.yml \
 -f ../metrics-monitoring.yml up -d

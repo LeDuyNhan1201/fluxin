@@ -9,7 +9,13 @@ export GROUP_CLAIM_NAME=groups
 export EXPECTED_AUDIENCE=account
 
 # Client configurations
-export APP_GROUP_NAME='/app_group1'
+export APP_GROUP_NAME='/fluxin_group'
+
+export POSTGRES_USER=fluxin
+export POSTGRES_PASSWORD=123
+
+export KEYCLOAK_ADMIN=keycloak_admin
+export KEYCLOAK_ADMIN_PASSWORD=123
 
 export SUPERUSER_CLIENT_ID=superuser_client_app
 export SUPERUSER_CLIENT_SECRET=superuser_client_app_secret

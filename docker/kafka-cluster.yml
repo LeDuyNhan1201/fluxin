@@ -1,62 +1,4 @@
 services:
-  # --------- Postgres ---------
-  postgres:
-    image: postgres:${POSTGRES_DOCKER_TAG:-latest}
-    build: ./postgres
-    container_name: postgres
-    ports: 
-      - "5432:5432"
-    networks:
-      - fluxin-network
-    command: postgres -c 'max_connections=500'
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d postgres"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
-    restart: unless-stopped
-    volumes:
-      - ./postgres/postgresql.conf.sample:/usr/share/postgresql/postgresql.conf.sample
-      - ./postgres/init-db:/docker-entrypoint-initdb.d:ro
-      - postgres-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-  # --------- Keycloak ---------
-  keycloak:
-    image: keycloak/keycloak:${KEYCLOAK_DOCKER_TAG:-latest}
-    container_name: keycloak
-    depends_on:
-      - postgres
-    ports:
-      - "8080:8080"
-    networks:
-      - fluxin-network
-    command: ["start-dev", "--health-enabled=true", "--import-realm"]
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:8080\r\nConnection: close\r\n\r\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
-    restart: unless-stopped
-    volumes:
-      - ./keycloak/data/realm-export.json:/opt/keycloak/data/import/realm-export.json
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_PROXY: edge
-      KEYCLOAK_IMPORT: /opt/keycloak/data/import/realm-export.json
-      KC_DB: postgres
-      KC_DB_URL_HOST: postgres
-      KC_DB_URL_PORT: 5432
-      KC_DB_URL_DATABASE: keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
-
   init_certificates:
     image: alpine/openssl
     container_name: init_certificates
@@ -97,6 +39,7 @@ services:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/configs:/etc/confluent/configs
       - ./kafka/bin/confluent:/usr/bin/confluent
+      - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
@@ -132,6 +75,7 @@ services:
         user_mds="mds-secret";
 
       # Controller Listener
+      KAFKA_LISTENER_NAME_CONTROLLER_PRINCIPAL_BUILDER_CLASS: io.confluent.kafka.security.authenticator.OAuthKafkaPrincipalBuilder
       KAFKA_LISTENER_NAME_CONTROLLER_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_LISTENER_NAME_CONTROLLER_PLAIN_SASL_JAAS_CONFIG: |
         org.apache.kafka.common.security.plain.PlainLoginModule required \
@@ -139,21 +83,19 @@ services:
         password="admin-secret" \
         user_admin="admin-secret" \
         user_mds="mds-secret";
-      KAFKA_LISTENER_NAME_CONTROLLER_PRINCIPAL_BUILDER_CLASS: io.confluent.kafka.security.authenticator.OAuthKafkaPrincipalBuilder
 
       # External OAuth (Keycloak)
       KAFKA_LISTENER_NAME_EXTERNAL_SASL_ENABLED_MECHANISMS: OAUTHBEARER
-      KAFKA_LISTENER_NAME_EXTERNAL_OAUTHBEARER_SASL_JAAS_CONFIG: |
-        org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
-            unsecuredLoginStringClaim_sub="thePrincipalName" \
-            publicKeyPath="/tmp/conf/public.pem" \
-            scope="${GROUP_CLAIM_NAME}";
-
       KAFKA_LISTENER_NAME_EXTERNAL_SASL_OAUTHBEARER_JWKS_ENDPOINT_URL: ${IDP_JWKS_ENDPOINT}
       KAFKA_LISTENER_NAME_EXTERNAL_SASL_OAUTHBEARER_EXPECTED_AUDIENCE: ${EXPECTED_AUDIENCE}
       KAFKA_LISTENER_NAME_EXTERNAL_SASL_OAUTHBEARER_SUB_CLAIM_NAME: ${SUB_CLAIM_NAME}
       KAFKA_LISTENER_NAME_EXTERNAL_PRINCIPAL_BUILDER_CLASS: io.confluent.kafka.security.authenticator.OAuthKafkaPrincipalBuilder
       KAFKA_LISTENER_NAME_EXTERNAL_OAUTHBEARER_SASL_SERVER_CALLBACK_HANDLER_CLASS: io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler
+      KAFKA_LISTENER_NAME_EXTERNAL_OAUTHBEARER_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
+            unsecuredLoginStringClaim_sub="thePrincipalName" \
+            publicKeyPath="/tmp/conf/public.pem" \
+            scope="${GROUP_CLAIM_NAME}";
 
       # Authorizer
       KAFKA_AUTHORIZER_CLASS_NAME: io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
@@ -221,7 +163,23 @@ services:
       KAFKA_CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLED: 'false'
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_AUTHENTICATION_ENABLE: 'true'
       KAFKA_CONFLUENT_CLUSTER_LINK_METADATA_TOPIC_REPLICATION_FACTOR: 1
-      EXTRA_ARGS: "-javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1234:/usr/bin/jmx/exporter.yml"
+
+      # OpenTelemetry configuration
+      OTEL_COLLECTOR_HOST: otel-collector
+      OTEL_COLLECTOR_PORT_GRPC: 4317
+      OTEL_COLLECTOR_PORT_HTTP: 4318
+      OTEL_JAVA_AGENT_ENABLED: 'true'
+      OTEL_JAVA_AGENT_LOGGING: "application"
+      OTEL_JAVA_AGENT_DEBUG: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=broker1,service.instance.id=broker1
+      EXTRA_ARGS: >
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1234:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
   init_permissions:
     # Just use the cp-server image as it has the curl command
@@ -235,8 +193,8 @@ services:
     restart: no
     volumes:
       - ./scripts/helper/init_permissions.sh:/usr/bin/init_permissions.sh
-      - ./keypair:/data
-      - ./mount:/etc/confluent/configs
+      - ./kafka/keypair:/data
+      - ./kafka/configs:/etc/confluent/configs
     environment:
       SUPERUSER_CLIENT_ID: ${SUPERUSER_CLIENT_ID}
       SUPERUSER_CLIENT_SECRET: ${SUPERUSER_CLIENT_SECRET}
@@ -254,7 +212,7 @@ services:
     image: confluentinc/cp-schema-registry:${CONFLUENT_DOCKER_TAG:-latest}
     container_name: schema-registry
     depends_on:
-      broker:
+      broker1:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
@@ -274,10 +232,11 @@ services:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/bin/confluent:/usr/bin/confluent
       - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
-      SCHEMA_REGISTRY_GROUP_ID: schema-registry-fluxin
+      SCHEMA_REGISTRY_GROUP_ID: "fluxin-schema-registry"
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:9095'
@@ -313,18 +272,34 @@ services:
       SCHEMA_REGISTRY_CONFLUENT_METADATA_OAUTHBEARER_LOGIN_CLIENT_SECRET: ${SR_CLIENT_SECRET}
 
       SCHEMA_REGISTRY_REST_AUTH_JMX_ENABLED: 'true'
-      EXTRA_ARGS: "-javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1235:/usr/bin/jmx/exporter.yml"
+
+      # OpenTelemetry configuration
+      OTEL_COLLECTOR_HOST: otel-collector
+      OTEL_COLLECTOR_PORT_GRPC: 4317
+      OTEL_COLLECTOR_PORT_HTTP: 4318
+      OTEL_JAVA_AGENT_ENABLED: 'true'
+      OTEL_JAVA_AGENT_LOGGING: "application"
+      OTEL_JAVA_AGENT_DEBUG: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=schema-registry,service.instance.id=schema-registry
+      EXTRA_ARGS: >
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1235:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
   # --------- Kafka Connect ---------
   connect:
     build:
-      context: ./connect
+      context: ./kafka/connect
       args:
-        CONFLUENT_DOCKER_TAG: ${CONFLUENT_DOCKER_TAG}
+        CONFLUENT_DOCKER_TAG: ${CONFLUENT_DOCKER_TAG:-latest}
     container_name: connect
     hostname: connect
     depends_on:
-      broker:
+      broker1:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
@@ -344,11 +319,12 @@ services:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/bin/confluent:/usr/bin/confluent
       - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
-      CONNECT_GROUP_ID: "connect-cluster"
-      CONNECT_PRODUCER_CLIENT_ID: "connect-worker-producer"
+      CONNECT_GROUP_ID: "fluxin-connect-cluster"
+      CONNECT_PRODUCER_CLIENT_ID: "fluxin-connect-worker-producer"
       CONNECT_BOOTSTRAP_SERVERS: broker1:9095
       CONNECT_LISTENERS: http://0.0.0.0:8083
 
@@ -455,19 +431,35 @@ services:
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
 
       CUB_CLASSPATH: '/usr/share/java/confluent-security/connect/*:/usr/share/java/kafka/*:/usr/share/java/cp-base-new/*:/usr/share/java/confluent-secret-registry/*'
-      EXTRA_ARGS: "-javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1236:/usr/bin/jmx/exporter.yml"
       CLASSPATH: "/usr/share/java/monitoring-interceptors/*"
       KAFKA_JVM_PERFORMANCE_OPTS: -server -XX:+UseG1GC -XX:GCTimeRatio=1
         -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20
         -XX:MaxGCPauseMillis=10000 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent
         -XX:MaxInlineLevel=15 -Djava.awt.headless=true
 
+      # OpenTelemetry configuration
+      OTEL_COLLECTOR_HOST: otel-collector
+      OTEL_COLLECTOR_PORT_GRPC: 4317
+      OTEL_COLLECTOR_PORT_HTTP: 4318
+      OTEL_JAVA_AGENT_ENABLED: 'true'
+      OTEL_JAVA_AGENT_LOGGING: "application"
+      OTEL_JAVA_AGENT_DEBUG: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=kafka-connect,service.instance.id=kafka-connect
+      EXTRA_ARGS: >
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1236:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
+
   # --------- ksqlDB Server ---------
   ksqldb-server:
     image: confluentinc/cp-ksqldb-server:${CONFLUENT_DOCKER_TAG:-latest}
     container_name: ksqldb-server
     depends_on:
-      broker:
+      broker1:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
@@ -480,7 +472,7 @@ services:
     volumes:
       - ./kafka/keypair:/tmp/conf
     environment:
-      KSQL_KSQL_SERVICE_ID: "ksql-cluster"
+      KSQL_KSQL_SERVICE_ID: "fluxin-ksql-cluster"
       KSQL_BOOTSTRAP_SERVERS: broker1:9095
       KSQL_HOST_NAME: ksqldb-server
       KSQL_LISTENERS: "http://0.0.0.0:8088"
@@ -553,7 +545,7 @@ services:
     image: confluentinc/cp-enterprise-control-center:${CONFLUENT_DOCKER_TAG:-latest}
     container_name: control-center
     depends_on:
-      broker:
+      broker1:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
@@ -575,6 +567,7 @@ services:
     volumes:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
@@ -637,8 +630,23 @@ services:
       CONTROL_CENTER_METRICS_TOPIC_PARTITIONS: 1
 
       CUB_CLASSPATH: '/usr/share/java/confluent-control-center/*:/usr/share/java/rest-utils/*:/usr/share/java/confluent-common/*:/usr/share/java/confluent-security/kafka-rest/*:/usr/share/java/kafka-rest/:/usr/share/java/cp-base-new/*'
-      EXTRA_ARGS: "-javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1237:/usr/bin/jmx/exporter.yml"
+
+      # OpenTelemetry configuration
+      OTEL_COLLECTOR_HOST: otel-collector
+      OTEL_COLLECTOR_PORT_GRPC: 4317
+      OTEL_COLLECTOR_PORT_HTTP: 4318
+      OTEL_JAVA_AGENT_ENABLED: 'true'
+      OTEL_JAVA_AGENT_LOGGING: "application"
+      OTEL_JAVA_AGENT_DEBUG: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=control-center,service.instance.id=control-center
+      EXTRA_ARGS: >
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1237:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
 volumes:
-  postgres-data:
   broker1-data:
