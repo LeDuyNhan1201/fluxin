@@ -9,7 +9,7 @@ export GROUP_CLAIM_NAME=groups
 export EXPECTED_AUDIENCE=account
 
 # Client configurations
-export APP_GROUP_NAME='/fluxin_group'
+export APP_GROUP_NAME='/app_group1'
 
 export POSTGRES_USER=fluxin
 export POSTGRES_PASSWORD=123

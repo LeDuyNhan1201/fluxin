@@ -23,7 +23,6 @@ services:
       - ./postgres/init-db:/docker-entrypoint-initdb.d:ro
       - postgres-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: keycloak
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
@@ -75,7 +74,7 @@ services:
       - fluxin-network
     command: [ "start-dev", "--health-enabled=true", "--import-realm" ]
     healthcheck:
-      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9991; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:9991\r\nConnection: close\r\n\r\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1" ]
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9990; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:9990\r\nConnection: close\r\n\r\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1" ]
       interval: 30s
       timeout: 10s
       start_period: 30s

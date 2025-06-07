@@ -36,7 +36,6 @@ processors:
         value: service.name, service.namespace
 
 exporters:
-  logging:
   debug:
     verbosity: detailed
 
@@ -49,7 +48,7 @@ exporters:
       enabled: true
 
   otlp/tempo:
-    endpoint: "smartcv-tempo:4317"
+    endpoint: "tempo:4317"
     tls:
       insecure: true
 
@@ -67,12 +66,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, debug, servicegraph, otlp/tempo]
+      exporters: [debug, servicegraph, otlp/tempo]
 
     metrics:
       receivers: [otlp, servicegraph]
       processors: [transform, batch]
-      exporters: [logging, debug, prometheus, prometheusremotewrite]
+      exporters: [debug, prometheus, prometheusremotewrite]
 
     logs:
       receivers: [otlp]

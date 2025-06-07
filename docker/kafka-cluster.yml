@@ -18,6 +18,8 @@ services:
         condition: service_healthy
       init_certificates:
         condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
     ports:
       - "9092:9092"
       - "9101:9101"
@@ -40,7 +42,7 @@ services:
       - ./kafka/configs:/etc/confluent/configs
       - ./kafka/bin/confluent:/usr/bin/confluent
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
-      - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
+      - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
       # Basic
@@ -178,7 +180,7 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=broker1,service.instance.id=broker1
       EXTRA_ARGS: >
-        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1234:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent.jar=1234:/usr/bin/jmx/exporter.yml
         -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
   init_permissions:
@@ -216,6 +218,8 @@ services:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
     ports:
       - "8081:8081"
       - "1235:1235"
@@ -233,7 +237,7 @@ services:
       - ./kafka/bin/confluent:/usr/bin/confluent
       - ./kafka/mount:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
-      - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
+      - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
       SCHEMA_REGISTRY_GROUP_ID: "fluxin-schema-registry"
@@ -287,7 +291,7 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=schema-registry,service.instance.id=schema-registry
       EXTRA_ARGS: >
-        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1235:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent.jar=1235:/usr/bin/jmx/exporter.yml
         -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
   # --------- Kafka Connect ---------
@@ -303,6 +307,8 @@ services:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
     ports:
       - "8083:8083"
       - "1236:1236"
@@ -320,7 +326,7 @@ services:
       - ./kafka/bin/confluent:/usr/bin/confluent
       - ./kafka/mount:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
-      - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
+      - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
       CONNECT_GROUP_ID: "fluxin-connect-cluster"
@@ -451,7 +457,7 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=kafka-connect,service.instance.id=kafka-connect
       EXTRA_ARGS: >
-        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1236:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent.jar=1236:/usr/bin/jmx/exporter.yml
         -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
   # --------- ksqlDB Server ---------
@@ -549,6 +555,8 @@ services:
         condition: service_healthy
       init_permissions:
         condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
     ports:
       - "9021:9021"
       - "9022:9022"
@@ -568,7 +576,7 @@ services:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/mount:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
-      - ./kafka/bin/jmx_prometheus_javaagent-0.15.0.jar:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar
+      - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
       CONTROL_CENTER_BOOTSTRAP_SERVERS: EXTERNAL://broker1:9095
@@ -645,7 +653,7 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=control-center,service.instance.id=control-center
       EXTRA_ARGS: >
-        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent-0.15.0.jar=1237:/usr/bin/jmx/exporter.yml
+        -javaagent:/usr/bin/jmx/jmx_prometheus_javaagent.jar=1237:/usr/bin/jmx/exporter.yml
         -javaagent:/usr/bin/otel/opentelemetry-javaagent.jar
 
 volumes:

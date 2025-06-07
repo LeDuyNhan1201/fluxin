@@ -8,6 +8,8 @@ services:
         condition: service_healthy
       prometheus:
         condition: service_healthy
+      loki:
+        condition: service_healthy
     ports:
       - "8888:8888"
       - "8889:8889"
@@ -24,9 +26,6 @@ services:
   prometheus:
     image: prom/prometheus:${PROMETHEUS_DOCKER_TAG:-latest}
     container_name: prometheus
-    depends_on:
-      broker1:
-        condition: service_healthy
     ports:
       - "9090:9090"
     networks:
@@ -47,15 +46,12 @@ services:
       retries: 3
     restart: unless-stopped
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   # --------- Grafana ---------
   grafana:
     image: grafana/grafana:${GRAFANA_DOCKER_TAG:-latest}
     container_name: grafana
-    depends_on:
-      broker1:
-        condition: service_healthy
     ports:
       - "3000:3000"
     networks:
@@ -98,6 +94,7 @@ services:
   # --------- Grafana Tempo ---------
   init-tempo:
     image: &tempoImage grafana/tempo:${GRAFANA_DOCKER_TAG:-latest}
+    container_name: init-tempo
     user: root
     entrypoint:
       - "chown"
@@ -105,7 +102,7 @@ services:
       - "/var/tempo"
     restart: no
     volumes:
-      - ./tempo/data:/var/tempo
+      - tempo-data:/var/tempo
 
   tempo:
     image: *tempoImage
