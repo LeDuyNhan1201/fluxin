@@ -2,6 +2,8 @@ services:
   init_certificates:
     image: alpine/openssl
     container_name: init_certificates
+    networks:
+      - fluxin-network
     entrypoint: /bin/sh
     command: "/usr/bin/init_certificates.sh"
     restart: no
@@ -11,7 +13,7 @@ services:
 
   # --------- Kafka Brokers ---------
   broker1:
-    image: confluentinc/cp-kafka:${CONFLUENT_DOCKER_TAG:-latest}
+    image: confluentinc/cp-server:${CONFLUENT_DOCKER_TAG:-latest}
     container_name: broker1
     depends_on:
       keycloak:
@@ -46,10 +48,10 @@ services:
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
       # Basic
-      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_ID: '1'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:SASL_PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://broker1:29092,CONTROLLER://broker1:29093,PLAINTEXT_HOST://0.0.0.0:9092,INTERNAL://broker1:9093,EXTERNAL://broker1:9095
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker1:29092,PLAINTEXT_HOST://localhost:9092,INTERNAL://broker1:9093,EXTERNAL://localhost:9095
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker1:29092,PLAINTEXT_HOST://localhost:9092,INTERNAL://broker1:9093,EXTERNAL://broker1:9095
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker1:29093
@@ -105,7 +107,8 @@ services:
       KAFKA_CONFLUENT_OAUTH_GROUPS_CLAIM_NAME: ${GROUP_CLAIM_NAME}
 
       # MDS (if enabled)
-      KAFKA_CONFLUENT_METADATA_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_METADATA_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_CONFLUENT_METADATA_SERVER_ENABLED: 'true'
       KAFKA_CONFLUENT_METADATA_SERVER_LISTENERS: http://0.0.0.0:8091
       KAFKA_CONFLUENT_METADATA_SERVER_ADVERTISED_LISTENERS: http://broker1:8091
       KAFKA_CONFLUENT_METADATA_SERVER_AUTHENTICATION_METHOD: BEARER
@@ -121,6 +124,7 @@ services:
       # EmbeddedKafkaRest: Kafka Client Configuration
       KAFKA_KAFKA_REST_BOOTSTRAP_SERVERS: SASL_PLAINTEXT://broker1:9095
       KAFKA_KAFKA_REST_CLIENT_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_KAFKA_REST_SCHEMA_REGISTRY_URL: http://schema-registry:8081
 
       # EmbeddedKafkaRest: HTTP Auth Configuration
       KAFKA_KAFKA_REST_KAFKA_REST_RESOURCE_EXTENSION_CLASS: io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
@@ -156,15 +160,20 @@ services:
 
       # Other
       KAFKA_AUTO_CREATE_TOPICS_ENABLED: 'true'
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_LOG_RETENTION_HOURS: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
+      KAFKA_LOG_RETENTION_HOURS: '1'
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_CONFLUENT_CLUSTER_LINK_METADATA_TOPIC_REPLICATION_FACTOR: '1'
       KAFKA_CONFLUENT_BALANCER_ENABLED: 'false'
       KAFKA_CONFLUENT_TELEMETRY_ENABLED: 'false'
       KAFKA_CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLED: 'false'
+#      KAFKA_CONFLUENT_REPORTERS_ENABLE: 'false'
+#      KAFKA_CONFLUENT_METRICS_ENABLE: 'false'
+#      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_AUTHENTICATION_ENABLE: 'true'
-      KAFKA_CONFLUENT_CLUSTER_LINK_METADATA_TOPIC_REPLICATION_FACTOR: 1
 
       # OpenTelemetry configuration
       OTEL_COLLECTOR_HOST: otel-collector
@@ -190,6 +199,8 @@ services:
     depends_on:
       broker1:
         condition: service_healthy
+    networks:
+      - fluxin-network
     entrypoint: /bin/bash
     command: "/usr/bin/init_permissions.sh"
     restart: no
@@ -226,7 +237,8 @@ services:
     networks:
       - fluxin-network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/subjects" ]
+      test: >
+        sh -c 'curl --silent --insecure -o /dev/null -w "%{http_code}" http://localhost:8081/subject | grep -E "^(200|401)$" > /dev/null'
       start_period: 10s
       interval: 10s
       timeout: 10s
@@ -315,10 +327,11 @@ services:
     networks:
       - fluxin-network
     healthcheck:
-      test: curl --user connectAdmin:connectAdmin --fail --silent --insecure https://connect:8083/ --output /dev/null || exit 1
+      test: >
+        sh -c 'curl --silent --insecure -o /dev/null -w "%{http_code}" http://connect:8083/ | grep -E "^(200|401)$" > /dev/null'
       start_period: 10s
       interval: 10s
-      timeout: 10s
+      timeout: 20s
       retries: 3
     restart: unless-stopped
     volumes:
@@ -474,6 +487,13 @@ services:
       - "1238:1238"
     networks:
       - fluxin-network
+    healthcheck:
+      test: >
+        sh -c 'curl --silent --insecure -o /dev/null -w "%{http_code}" http://localhost:8088/ | grep -E "^(200|401)$" > /dev/null'
+      start_period: 10s
+      interval: 10s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     volumes:
       - ./kafka/keypair:/tmp/conf
@@ -563,9 +583,9 @@ services:
       - "1237:1237"
     networks:
       - fluxin-network
-    command: >
-      rm -rf /usr/share/java/confluent-control-center/protobuf-java-util-3.24.4.jar &&
-      /etc/confluent/docker/launch;
+#    command: >
+#      rm -rf /usr/share/java/confluent-control-center/protobuf-java-util-3.24.4.jar &&
+#      /etc/confluent/docker/launch;
     healthcheck:
       test: curl --fail --silent http://control-center:9021 --output /dev/null || exit 1
       start_period: 10s

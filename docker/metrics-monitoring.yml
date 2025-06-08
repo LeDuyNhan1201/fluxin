@@ -67,9 +67,11 @@ services:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
     environment:
-      GF_AUTH_ANONYMOUS_ENABLED: true
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_AUTH_DISABLE_LOGIN_FORM: true
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: 123
+#      GF_AUTH_ANONYMOUS_ENABLED: true
+#      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+#      GF_AUTH_DISABLE_LOGIN_FORM: true
 
   # --------- Grafana Loki ---------
   loki:
@@ -112,7 +114,7 @@ services:
         condition: service_completed_successfully
     ports:
       - "3200:3200"   # tempo
-      - "9095:9095" # tempo grpc
+      - "9096:9095" # tempo grpc
     networks:
       - fluxin-network
     command: [ "-config.file=/etc/tempo.yaml" ]
