@@ -1,1 +1,192 @@
-spring.application.name=fluxin
+# --------- Metrics & Monitoring ---------
+otel:
+  instrumentation:
+    common:
+      default-enabled: false  # Tắt toàn bộ mặc định, chọn lọc bật từng cái
+    jdbc:
+      enabled: false
+    spring-web:
+      enabled: true
+    spring-webmvc:
+      enabled: true
+    logback-appender:
+      enabled: true
+    logback-mdc:
+      enabled: true
+    micrometer:
+      enabled: true  # Bật để gửi metrics qua Prometheus
+    kafka:
+      enabled: true
+    mongo:
+      enabled: true
+    r2dbc:
+      enabled: false
+
+management:
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+      cluster: local
+
+  otlp:
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    metrics:
+      export:
+        endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 5s
+
+  info:
+    git:
+      enabled: true
+      mode: full
+
+  endpoint:
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+    health:
+      show-details: always
+
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
+    tags:
+      application: ${spring.application.name}
+
+  observations:
+    annotations:
+      enabled: true
+    key-values:
+      application: ${spring.application.name}
+
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+
+# --------- API document ---------
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui
+  show-actuator: true
+
+openapi:
+  service:
+    name: fluxin
+    api-docs: fluxin-rest-api
+    title: Fluxin Restful API
+    description: This is the Restful APIs documentation for Fluxin.
+    version: 1.0.0
+    server-url: http://localhost:${server.port}${server.servlet.context-path}
+    server-description: Fluxin Restful APIs For Development
+
+# --------- Logging ---------
+logging:
+  pattern:
+    correlation: "[${spring.application.name:}, %X{traceId:-}, %X{spanId:-}]"
+
+  level:
+    org:
+      springframework:
+        security: DEBUG
+
+# --------- Spring configs ---------
+spring:
+  config:
+    import: file:env.properties
+  application:
+    name: fluxin
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    default-locale: en
+    cache-duration: 3600
+
+#  datasource:
+#    driver-class-name: org.postgresql.Driver
+#    url: ${JOB_POSTGRES_URL:jdbc:postgresql://localhost:5432/job_service_db}
+#    username: ${POSTGRES_USERNAME}
+#    password: ${POSTGRES_PASSWORD}
+#
+#  jpa:
+#    database-platform: org.hibernate.dialect.PostgreSQLDialect
+#    hibernate:
+#      ddl-auto: none
+#    show-sql: true
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        format_sql: true
+
+#  data:
+#    mongodb:
+#      axon:
+#        uri: ${MONGODB_URI}
+#
+#    redis:
+#      port: ${REDIS_PORT:6379}
+#      host: ${REDIS_HOST:localhost}
+#      database: 0
+#
+#    elasticsearch:
+#      repositories:
+#        enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:broker1:9095}
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+      security:
+        protocol: SASL_PLAINTEXT
+      sasl:
+        login:
+          callback:
+            handler:
+              class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+        oauthbearer:
+          token:
+            endpoint:
+              url: http://keycloak:8080/realms/cp/protocol/openid-connect/token
+        jaas:
+          config: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId="client_app1" clientSecret="client_app1_secret";
+        mechanism: OAUTHBEARER
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer
+
+
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
+      auto-offset-reset: latest
+      enable-auto-commit: false

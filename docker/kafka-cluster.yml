@@ -247,7 +247,7 @@ services:
     volumes:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/bin/confluent:/usr/bin/confluent
-      - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/configs:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
@@ -337,7 +337,7 @@ services:
     volumes:
       - ./kafka/keypair:/tmp/conf
       - ./kafka/bin/confluent:/usr/bin/confluent
-      - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/configs:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
@@ -594,7 +594,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./kafka/keypair:/tmp/conf
-      - ./kafka/mount:/etc/confluent/configs
+      - ./kafka/configs:/etc/confluent/configs
       - ./kafka/bin/opentelemetry-javaagent.jar:/usr/bin/otel/opentelemetry-javaagent.jar
       - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
