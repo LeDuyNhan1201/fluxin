@@ -33,20 +33,40 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
+	/* --------- Monitoring Dependencies --------- */
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+	implementation "io.micrometer:micrometer-tracing:${micrometerTracingVersion}" // https://mvnrepository.com/artifact/io.micrometer/micrometer-tracing
+	implementation "io.micrometer:micrometer-tracing-bridge-otel:${micrometerTracingVersion}" // https://mvnrepository.com/artifact/io.micrometer/micrometer-tracing-bridge-otel
+	implementation "io.opentelemetry:opentelemetry-exporter-otlp:${openTelemetryExporterVersion}" // https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-exporter-otlp
 
+	/* --------- Spring core Dependencies --------- */
 //	implementation 'org.springframework.boot:spring-boot-starter-oauth2-authorization-server'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	/* --------- Kafka Dependencies --------- */
 	implementation 'org.springframework.kafka:spring-kafka'
+	implementation "io.confluent:kafka-avro-serializer:${confluentVersion}" // https://mvnrepository.com/artifact/io.confluent/kafka-avro-serializer
 
 	runtimeOnly 'com.h2database:h2'
 
+	/* --------- Test Dependencies --------- */
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'io.projectreactor:reactor-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${openTelemetryVersion}")
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
 }
 
 tasks.named('test') {

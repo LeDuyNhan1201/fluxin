@@ -112,6 +112,18 @@ logging:
       springframework:
         security: DEBUG
 
+# -------- Rest Server ---------
+server:
+  port: 20000
+  servlet:
+    context-path: /fluxin
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+      force-request: true
+      force-response: true
+
 # --------- Spring configs ---------
 spring:
   config:
@@ -182,11 +194,10 @@ spring:
 
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer
-
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
 
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       auto-offset-reset: latest
       enable-auto-commit: false
