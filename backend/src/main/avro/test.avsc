@@ -1,0 +1,11 @@
+{
+    "type": "record",
+    "name": "TestMessage",
+    "namespace": "org.neb.fluxin.avro",
+    "fields": [
+      {
+        "name": "content",
+        "type": "string"
+      }
+    ]
+}

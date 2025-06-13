@@ -1,3 +1,9 @@
+//buildscript {
+//	dependencies {
+//		classpath "org.apache.avro:avro-tools:${apacheAvroVersion}"
+//	}
+//}
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version "${springBootVersion}"
@@ -20,6 +26,7 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+	avroTools
 }
 
 repositories {
@@ -48,7 +55,9 @@ dependencies {
 
 	/* --------- Kafka Dependencies --------- */
 	implementation 'org.springframework.kafka:spring-kafka'
+	implementation "org.apache.avro:avro:${apacheAvroVersion}" // https://avro.apache.org
 	implementation "io.confluent:kafka-avro-serializer:${confluentVersion}" // https://mvnrepository.com/artifact/io.confluent/kafka-avro-serializer
+	avroTools "org.apache.avro:avro-tools:${apacheAvroVersion}"
 
 	runtimeOnly 'com.h2database:h2'
 
@@ -71,4 +80,27 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+def avroSchemasDir = file("src/main/avro")
+def avroCodeGenerationDir = file("build/generated-avro")
+
+sourceSets.main.java.srcDirs += [avroCodeGenerationDir]
+
+tasks.register('customAvroCodeGeneration', JavaExec) {
+	group = "build"
+	description = "Generate Avro Java classes from .avsc schemas"
+	inputs.dir(avroSchemasDir)
+	outputs.dir(avroCodeGenerationDir)
+
+	classpath = configurations.avroTools
+	mainClass = "org.apache.avro.tool.Main"
+	args = ['compile', 'schema', avroSchemasDir.absolutePath, avroCodeGenerationDir.absolutePath]
+
+	logging.captureStandardOutput(LogLevel.INFO)
+	logging.captureStandardError(LogLevel.ERROR)
+}
+
+tasks.withType(JavaCompile).configureEach {
+	dependsOn('customAvroCodeGeneration')
 }
