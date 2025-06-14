@@ -91,6 +91,9 @@ springdoc:
   swagger-ui:
     path: /swagger-ui
   show-actuator: true
+  oauthflow:
+    authorization-url: http://keycloak:8080/realms/fluxin/protocol/openid-connect/auth
+    token-url: http://keycloak:8080/realms/fluxin/protocol/openid-connect/token
 
 openapi:
   service:
@@ -101,6 +104,8 @@ openapi:
     version: 1.0.0
     server-url: http://localhost:${server.port}${server.servlet.context-path}
     server-description: Fluxin Restful APIs For Development
+    external-docs-url: http://localhost:${server.port}${server.servlet.context-path}/api-docs
+    external-docs-description: Fluxin Restful APIs External Documentation
 
 # --------- Logging ---------
 logging:

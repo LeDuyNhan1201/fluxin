@@ -1,6 +1,7 @@
-package org.neb.fluxin;
+package org.neb.fluxin.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.neb.fluxin.contract.TestMessage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +31,8 @@ public class TestController {
 
     KafkaTemplate<String, org.neb.fluxin.avro.TestMessage> kafkaTemplate;
 
-    @Operation(summary = "Create JD", description = "API to Create new job description")
+    @Operation(summary = "Create JD", description = "API to Create new job description",
+            security = @SecurityRequirement(name = "basic_bearer"))
     @PostMapping
     @ResponseStatus(OK)
     public ResponseEntity<?> test(@RequestBody @Valid TestMessage request) {
@@ -38,8 +41,7 @@ public class TestController {
                     "test", null,
                     UUID.randomUUID().toString(), new org.neb.fluxin.avro.TestMessage(request.content()),
                     List.of(
-                            new RecordHeader("correlationId", "123".getBytes(StandardCharsets.UTF_8)),
-                            new RecordHeader("causationId", "456".getBytes(StandardCharsets.UTF_8))
+                            new RecordHeader("type", "message".getBytes(StandardCharsets.UTF_8))
                     ));
             kafkaTemplate.send(record);
 

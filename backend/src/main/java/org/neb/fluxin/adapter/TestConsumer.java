@@ -1,4 +1,4 @@
-package org.neb.fluxin;
+package org.neb.fluxin.adapter;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

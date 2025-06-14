@@ -252,7 +252,8 @@ services:
       - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
-      SCHEMA_REGISTRY_GROUP_ID: "fluxin-schema-registry-cluster"
+      SCHEMA_REGISTRY_CLUSTER_ID: "fluxin-schema-registry-cluster"
+      SCHEMA_REGISTRY_GROUP_ID: "schema-registry-group"
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:9095'
@@ -342,7 +343,8 @@ services:
       - ./kafka/bin/jmx_prometheus_javaagent.jar:/usr/bin/jmx/jmx_prometheus_javaagent.jar
       - ./kafka/metrics/exporter.yml:/usr/bin/jmx/exporter.yml
     environment:
-      CONNECT_GROUP_ID: "fluxin-connect-cluster"
+      CONNECT_CLUSTER_ID: "fluxin-connect-cluster"
+      CONNECT_GROUP_ID: "connect-group"
       CONNECT_PRODUCER_CLIENT_ID: "fluxin-connect-worker-producer"
       CONNECT_BOOTSTRAP_SERVERS: broker1:9095
       CONNECT_LISTENERS: http://0.0.0.0:8083

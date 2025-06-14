@@ -17,6 +17,9 @@ create_client_files() {
 }
 
 create_env_file() {
+    # Xóa nội dung file trước khi ghi
+    : > ../.env
+
 #    echo DOCKER_REGISTRY=$DOCKER_REGISTRY > .env
 #    echo CONFLUENT=$CONFLUENT >> .env
 #    echo CONFLUENT_DOCKER_TAG=$CONFLUENT_DOCKER_TAG >> .env
@@ -76,3 +79,39 @@ create_env_file() {
     echo KSQL_CLIENT_ID=$KSQL_CLIENT_ID >> ../.env
     echo KSQL_CLIENT_SECRET=$KSQL_CLIENT_SECRET >> ../.env
 }
+
+assign_group_owner() {
+  group_name="$1"
+
+  # Lấy access token từ IDP
+  auth_token=$(curl -s -d "client_id=$SUPERUSER_CLIENT_ID" \
+                    -d "client_secret=$SUPERUSER_CLIENT_SECRET" \
+                    -d "grant_type=client_credentials" \
+                    "$IDP_TOKEN_ENDPOINT" | \
+               grep -Po '"access_token": *\K"[^"]*"' | grep -o '[^"]*')
+
+  echo "Access Token: $auth_token"
+
+  MDS_RBAC_ENDPOINT=http://broker1:8091/security/1.0/principals
+
+  # Gán role ResourceOwner cho group
+  curl -X POST "$MDS_RBAC_ENDPOINT/User:$CLIENT_APP_ID/roles/ResourceOwner/bindings" \
+    -H "Authorization: Bearer $auth_token" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -d "{
+      \"scope\": {
+        \"clusters\": {
+          \"kafka-cluster\": \"vHCgQyIrRHG8Jv27qI2h3Q\"
+        }
+      },
+      \"resourcePatterns\": [
+        {
+          \"resourceType\": \"Group\",
+          \"name\": \"$group_name\",
+          \"patternType\": \"LITERAL\"
+        }
+      ]
+    }"
+}
+
