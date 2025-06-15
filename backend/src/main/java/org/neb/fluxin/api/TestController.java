@@ -1,6 +1,10 @@
 package org.neb.fluxin.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,9 +37,16 @@ public class TestController {
 
     @Operation(summary = "Create JD", description = "API to Create new job description",
             security = @SecurityRequirement(name = "basic_bearer"))
-    @PostMapping
+//    @ApiResponses(value = {
+//        @ApiResponse(responseCode = "common/no-content", description = "No content", content = @Content()),
+//        @ApiResponse(responseCode = "common/not-found", description = "Not Found",
+//                content = @Content(schema = @Schema(implementation = TestMessage.class))),
+//        @ApiResponse(responseCode = "400", description = "Bad Request",
+//                content = @Content(schema = @Schema(implementation = String.class)))
+//    })
     @ResponseStatus(OK)
-    public ResponseEntity<?> test(@RequestBody @Valid TestMessage request) {
+    @PostMapping
+    public ResponseEntity<String> test(@RequestBody @Valid TestMessage request) {
         try {
             ProducerRecord<String, org.neb.fluxin.avro.TestMessage> record = new ProducerRecord<>(
                     "test", null,

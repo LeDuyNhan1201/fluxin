@@ -89,11 +89,28 @@ springdoc:
   api-docs:
     path: /api-docs
   swagger-ui:
+    oauth:
+      clientId: newClient
+      clientSecret: newClientSecret
     path: /swagger-ui
+    display-request-duration: true
+    groups-order: DESC
+    operationsSorter: method
+    disable-swagger-default-url: true
   show-actuator: true
+  show-oauth2-endpoints: true
+  cache:
+    disabled: true
+  allowed-locales: en-US,vi-VN
+  pre-loading-locales: en-US,vi-VN
+  group-configs:
+    - group: fluxin-rest-api
+      display-name: Fluxin Restful APIs
+      packages-to-scan: org.neb.fluxin.api
   oauthflow:
     authorization-url: http://keycloak:8080/realms/fluxin/protocol/openid-connect/auth
     token-url: http://keycloak:8080/realms/fluxin/protocol/openid-connect/token
+
 
 openapi:
   service:
@@ -106,6 +123,10 @@ openapi:
     server-description: Fluxin Restful APIs For Development
     external-docs-url: http://localhost:${server.port}${server.servlet.context-path}/api-docs
     external-docs-description: Fluxin Restful APIs External Documentation
+    terms-of-service: http://localhost:${server.port}${server.servlet.context-path}/api-docs/terms-of-service
+    license:
+      name: Apache License
+      version: 2.0
 
 # --------- Logging ---------
 logging:
@@ -120,6 +141,7 @@ logging:
 # -------- Rest Server ---------
 server:
   port: 20000
+  forward-headers-strategy: framework
   servlet:
     context-path: /fluxin
     encoding:
